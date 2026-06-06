@@ -1,0 +1,325 @@
+// School Management System — Prisma schema
+// Postgres. Run `npm run prisma:migrate` after editing.
+
+generator client {
+  provider      = "prisma-client-js"
+  // "native" for local dev; the musl target is needed for the Alpine Docker image.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------- Enums -----------------------------
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum StudentStatus {
+  ACTIVE
+  GRADUATED
+  SUSPENDED
+  TRANSFERRED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum AssessmentType {
+  ASSIGNMENT
+  QUIZ
+  PROJECT
+  EXAM
+  MIDTERM
+  FINAL
+}
+
+enum FeeType {
+  TUITION
+  ADMISSION
+  EXAM
+  TRANSPORT
+  LIBRARY
+}
+
+enum FeeFrequency {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum PaymentMethod {
+  CASH
+  ONLINE
+  BANK
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+}
+
+// ----------------------------- Models -----------------------------
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  firstName String
+  lastName  String
+  isActive  Boolean  @default(true)
+  mfaSecret String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A user account may be linked to a student profile (role STUDENT/PARENT)
+  student          Student?         @relation("StudentAccount")
+  markedAttendance Attendance[]     @relation("MarkedBy")
+  staffAttendance  StaffAttendance[]
+  taughtCourses    Course[]         @relation("CourseTeacher")
+  taughtClasses    Class[]          @relation("ClassTeacher")
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+
+  @@index([email])
+}
+
+model Guardian {
+  id        String    @id @default(uuid())
+  firstName String
+  lastName  String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  students  Student[]
+}
+
+model Student {
+  id          String        @id @default(uuid())
+  studentId   String        @unique // human-facing id, e.g. STU-00001
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime
+  gender      String
+  address     String?
+  phone       String?
+  email       String?       @unique
+  status      StudentStatus @default(ACTIVE)
+
+  // Optional medical history
+  allergies   String?
+  conditions  String?
+  medications String?
+
+  guardianId  String?
+  guardian    Guardian?     @relation(fields: [guardianId], references: [id])
+
+  // Optional linked login account
+  userId      String?       @unique
+  user        User?         @relation("StudentAccount", fields: [userId], references: [id])
+
+  attendance  Attendance[]
+  grades      Grade[]
+  enrollments Enrollment[]
+  payments    FeePayment[]
+  scholarships Scholarship[]
+
+  deletedAt   DateTime?     // soft delete
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([studentId])
+  @@index([status])
+}
+
+model Class {
+  id           String       @id @default(uuid())
+  name         String
+  gradeLevel   String
+  capacity     Int          @default(30)
+  academicYear String
+  teacherId    String?
+  teacher      User?        @relation("ClassTeacher", fields: [teacherId], references: [id])
+  attendance   Attendance[]
+  enrollments  Enrollment[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Course {
+  id          String       @id @default(uuid())
+  code        String       @unique
+  name        String
+  description String?
+  creditHours Int          @default(3)
+  teacherId   String?
+  teacher     User?        @relation("CourseTeacher", fields: [teacherId], references: [id])
+  grades      Grade[]
+  exams       Exam[]
+  enrollments Enrollment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Enrollment {
+  id           String           @id @default(uuid())
+  studentId    String
+  student      Student          @relation(fields: [studentId], references: [id])
+  classId      String
+  class        Class            @relation(fields: [classId], references: [id])
+  courseId     String?
+  course       Course?          @relation(fields: [courseId], references: [id])
+  academicYear String
+  status       EnrollmentStatus @default(ACTIVE)
+  createdAt    DateTime         @default(now())
+
+  @@unique([studentId, classId, academicYear])
+}
+
+model Attendance {
+  id        String           @id @default(uuid())
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id])
+  classId   String
+  class     Class            @relation(fields: [classId], references: [id])
+  date      DateTime
+  status    AttendanceStatus
+  markedBy  String?
+  marker    User?            @relation("MarkedBy", fields: [markedBy], references: [id])
+  notes     String?
+  createdAt DateTime         @default(now())
+
+  @@unique([studentId, classId, date])
+  @@index([studentId, date])
+}
+
+model StaffAttendance {
+  id        String           @id @default(uuid())
+  staffId   String
+  staff     User             @relation(fields: [staffId], references: [id])
+  date      DateTime
+  status    AttendanceStatus
+  notes     String?
+  createdAt DateTime         @default(now())
+
+  @@unique([staffId, date])
+}
+
+model Grade {
+  id             String         @id @default(uuid())
+  studentId      String
+  student        Student        @relation(fields: [studentId], references: [id])
+  courseId       String
+  course         Course         @relation(fields: [courseId], references: [id])
+  assessmentType AssessmentType
+  score          Float
+  maxScore       Float
+  weight         Float          @default(1)
+  letterGrade    String?
+  submittedDate  DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+
+  @@index([studentId, courseId])
+}
+
+model Exam {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  title     String
+  date      DateTime
+  time      String?
+  duration  Int? // minutes
+  location  String?
+  maxScore  Float    @default(100)
+  createdAt DateTime @default(now())
+}
+
+model Fee {
+  id          String       @id @default(uuid())
+  feeType     FeeType
+  amount      Float
+  frequency   FeeFrequency
+  dueDate     DateTime
+  description String?
+  isActive    Boolean      @default(true)
+  payments    FeePayment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model FeePayment {
+  id            String        @id @default(uuid())
+  studentId     String
+  student       Student       @relation(fields: [studentId], references: [id])
+  feeId         String
+  fee           Fee           @relation(fields: [feeId], references: [id])
+  amountPaid    Float
+  paymentMethod PaymentMethod
+  paymentDate   DateTime      @default(now())
+  transactionId String?
+  status        PaymentStatus @default(COMPLETED)
+  createdAt     DateTime      @default(now())
+
+  @@index([studentId, paymentDate])
+}
+
+model Scholarship {
+  id         String    @id @default(uuid())
+  studentId  String
+  student    Student   @relation(fields: [studentId], references: [id])
+  percentage Float
+  reason     String?
+  startDate  DateTime
+  endDate    DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+}

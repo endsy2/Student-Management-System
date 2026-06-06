@@ -1,0 +1,469 @@
+{
+  "info": {
+    "_postman_id": "b1f3c2a4-5d6e-4f70-8a91-0c2d3e4f5a6b",
+    "name": "School Management System API",
+    "description": "All backend endpoints for the SMS API (Express + Prisma + Redis).\n\nQuick start:\n1. Import this collection.\n2. Set the `baseUrl` variable if your API is not on http://localhost:4000/api/v1.\n3. Run **Auth → Login** — the access & refresh tokens are captured automatically into collection variables and used as Bearer auth on every other request.\n\nSeeded admin (after `npm run db:seed`): admin@sms.local / Admin@123",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api/v1", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "studentId", "value": "", "type": "string" },
+    { "key": "classId", "value": "", "type": "string" },
+    { "key": "courseId", "value": "", "type": "string" },
+    { "key": "feeId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"teacher@sms.local\",\n  \"password\": \"Teacher@123\",\n  \"firstName\": \"Tina\",\n  \"lastName\": \"Teacher\",\n  \"role\": \"TEACHER\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  console.log('Tokens saved to collection variables.');",
+                  "}",
+                  "pm.test('login ok', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@sms.local\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Refresh token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] }
+          }
+        },
+        {
+          "name": "Current user (me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Students",
+      "item": [
+        {
+          "name": "List students",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/students?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["students"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "status", "value": "ACTIVE", "disabled": true },
+                { "key": "classId", "value": "{{classId}}", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.collectionVariables.set('studentId', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Sam\",\n  \"lastName\": \"Student\",\n  \"dateOfBirth\": \"2010-05-14\",\n  \"gender\": \"male\",\n  \"address\": \"12 School Lane\",\n  \"phone\": \"0123456789\",\n  \"email\": \"sam.student@example.com\",\n  \"guardian\": {\n    \"firstName\": \"Gina\",\n    \"lastName\": \"Guardian\",\n    \"phone\": \"0987654321\",\n    \"email\": \"gina@example.com\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/students", "host": ["{{baseUrl}}"], "path": ["students"] }
+          }
+        },
+        {
+          "name": "Get student by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/students/{{studentId}}", "host": ["{{baseUrl}}"], "path": ["students", "{{studentId}}"] }
+          }
+        },
+        {
+          "name": "Update student",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"0111222333\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/students/{{studentId}}", "host": ["{{baseUrl}}"], "path": ["students", "{{studentId}}"] }
+          }
+        },
+        {
+          "name": "Delete student (soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/students/{{studentId}}", "host": ["{{baseUrl}}"], "path": ["students", "{{studentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "Mark attendance",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"classId\": \"{{classId}}\",\n  \"date\": \"2026-06-06\",\n  \"status\": \"PRESENT\",\n  \"notes\": \"\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/attendance", "host": ["{{baseUrl}}"], "path": ["attendance"] }
+          }
+        },
+        {
+          "name": "Bulk mark attendance",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"classId\": \"{{classId}}\",\n  \"date\": \"2026-06-06\",\n  \"records\": [\n    { \"studentId\": \"{{studentId}}\", \"status\": \"PRESENT\" }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/attendance/bulk", "host": ["{{baseUrl}}"], "path": ["attendance", "bulk"] }
+          }
+        },
+        {
+          "name": "By class and date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance/class/{{classId}}/date/2026-06-06",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "class", "{{classId}}", "date", "2026-06-06"]
+            }
+          }
+        },
+        {
+          "name": "History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance/history?studentId={{studentId}}&page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "history"],
+              "query": [
+                { "key": "studentId", "value": "{{studentId}}" },
+                { "key": "classId", "value": "{{classId}}", "disabled": true },
+                { "key": "from", "value": "2026-06-01", "disabled": true },
+                { "key": "to", "value": "2026-06-30", "disabled": true },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance/analytics?studentId={{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "analytics"],
+              "query": [
+                { "key": "studentId", "value": "{{studentId}}" },
+                { "key": "classId", "value": "{{classId}}", "disabled": true },
+                { "key": "from", "value": "2026-06-01", "disabled": true },
+                { "key": "to", "value": "2026-06-30", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark staff attendance",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"staffId\": \"REPLACE_WITH_USER_ID\",\n  \"date\": \"2026-06-06\",\n  \"status\": \"PRESENT\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/attendance/staff", "host": ["{{baseUrl}}"], "path": ["attendance", "staff"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grades",
+      "item": [
+        {
+          "name": "Create grade",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"courseId\": \"{{courseId}}\",\n  \"assessmentType\": \"EXAM\",\n  \"score\": 88,\n  \"maxScore\": 100,\n  \"weight\": 0.7\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/grades", "host": ["{{baseUrl}}"], "path": ["grades"] }
+          }
+        },
+        {
+          "name": "Bulk create grades",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"assessmentType\": \"QUIZ\",\n  \"maxScore\": 20,\n  \"weight\": 0.3,\n  \"entries\": [\n    { \"studentId\": \"{{studentId}}\", \"score\": 18 }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/grades/bulk", "host": ["{{baseUrl}}"], "path": ["grades", "bulk"] }
+          }
+        },
+        {
+          "name": "Grades by student",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/grades/student/{{studentId}}", "host": ["{{baseUrl}}"], "path": ["grades", "student", "{{studentId}}"] }
+          }
+        },
+        {
+          "name": "Report card (PDF)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grades/student/{{studentId}}/report-card?comments=Great progress",
+              "host": ["{{baseUrl}}"],
+              "path": ["grades", "student", "{{studentId}}", "report-card"],
+              "query": [{ "key": "comments", "value": "Great progress" }]
+            },
+            "description": "Returns a PDF stream. In Postman use 'Send and Download' to save the file."
+          }
+        },
+        {
+          "name": "Course analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/grades/course/{{courseId}}", "host": ["{{baseUrl}}"], "path": ["grades", "course", "{{courseId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fees",
+      "item": [
+        {
+          "name": "List fees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/fees", "host": ["{{baseUrl}}"], "path": ["fees"] }
+          }
+        },
+        {
+          "name": "Create fee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.collectionVariables.set('feeId', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"feeType\": \"TUITION\",\n  \"amount\": 1500,\n  \"frequency\": \"MONTHLY\",\n  \"dueDate\": \"2026-06-30\",\n  \"description\": \"June tuition\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/fees", "host": ["{{baseUrl}}"], "path": ["fees"] }
+          }
+        },
+        {
+          "name": "Record payment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"feeId\": \"{{feeId}}\",\n  \"amountPaid\": 750,\n  \"paymentMethod\": \"ONLINE\",\n  \"transactionId\": \"TXN-12345\",\n  \"status\": \"PARTIAL\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/fees/payments", "host": ["{{baseUrl}}"], "path": ["fees", "payments"] }
+          }
+        },
+        {
+          "name": "Student fee ledger",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/fees/student/{{studentId}}", "host": ["{{baseUrl}}"], "path": ["fees", "student", "{{studentId}}"] }
+          }
+        },
+        {
+          "name": "Overdue payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/fees/payments/overdue", "host": ["{{baseUrl}}"], "path": ["fees", "payments", "overdue"] }
+          }
+        },
+        {
+          "name": "Financial report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/fees/reports/financial", "host": ["{{baseUrl}}"], "path": ["fees", "reports", "financial"] }
+          }
+        },
+        {
+          "name": "Create scholarship",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"percentage\": 25,\n  \"reason\": \"Merit scholarship\",\n  \"startDate\": \"2026-06-01\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/fees/scholarships", "host": ["{{baseUrl}}"], "path": ["fees", "scholarships"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/dashboard/overview", "host": ["{{baseUrl}}"], "path": ["dashboard", "overview"] }
+          }
+        },
+        {
+          "name": "Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/dashboard/analytics", "host": ["{{baseUrl}}"], "path": ["dashboard", "analytics"] }
+          }
+        },
+        {
+          "name": "Recent activity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/dashboard/recent-activity", "host": ["{{baseUrl}}"], "path": ["dashboard", "recent-activity"] }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+name: sms_mobile
+description: School Management System — mobile app for students and parents.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.29.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # Networking
+  http: ^1.2.1
+  socket_io_client: ^2.0.3+1
+
+  # Secure token + local storage
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.2.3
+  sqflite: ^2.3.3+1
+  path: ^1.9.0
+  path_provider: ^2.1.3
+
+  # State management
+  provider: ^6.1.2
+
+  # UI / charts / QR
+  fl_chart: ^0.68.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.1.1
+
+  # Config + formatting
+  flutter_dotenv: ^5.1.0
+  intl: ^0.19.0
+
+  # Typography — friendly rounded typeface for a student-facing app
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
