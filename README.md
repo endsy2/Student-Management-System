@@ -80,3 +80,4 @@ npm run prisma:migrate
 npm run db:seed
 npm run dev
 ```
+# Student-Management-System
